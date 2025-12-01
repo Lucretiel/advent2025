@@ -9,7 +9,10 @@ use nom_supreme::{
     multi::collect_separated_terminated,
 };
 
-use crate::library::{Definitely, ITResult};
+use crate::{
+    library::{Definitely, ITResult},
+    parser,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
@@ -54,13 +57,12 @@ impl Rotation {
 }
 
 fn parse_rotation(input: &str) -> ITResult<&str, Rotation> {
-    alt((char('L').value(Left), char('R').value(Right)))
-        .and(digit1.parse_from_str_cut())
-        .map(|(direction, distance)| Rotation {
-            direction,
-            distance,
-        })
-        .parse(input)
+    parser! {
+        alt((char('L').value(Left), char('R').value(Right))) => direction,
+        digit1.parse_from_str_cut() => distance;
+        Rotation { direction, distance }
+    }
+    .parse(input)
 }
 
 #[derive(Debug)]
