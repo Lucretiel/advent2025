@@ -11,11 +11,13 @@ use nom_supreme::{
 
 use crate::library::{Definitely, ITResult};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Left,
     Right,
 }
+
+use Direction::*;
 
 #[derive(Debug, Clone, Copy)]
 struct Rotation {
@@ -26,38 +28,39 @@ struct Rotation {
 impl Rotation {
     pub fn apply(&self, state: i32) -> i32 {
         match self.direction {
-            Direction::Left => state - self.distance,
-            Direction::Right => state + self.distance,
+            Left => state - self.distance,
+            Right => state + self.distance,
         }
         .rem_euclid(100)
     }
 
-    pub fn apply_count(&self, state: i32) -> (i32, u32) {
-        let new_state = match self.direction {
-            Direction::Left => state - self.distance,
-            Direction::Right => state + self.distance,
+    pub fn apply_count(&self, state: i32) -> (i32, i32) {
+        let clicks = self.distance.div_euclid(100);
+        let distance = self.distance.rem_euclid(100);
+
+        let direction = match self.direction {
+            Left => -1,
+            Right => 1,
         };
 
-        let c1 = state.div_euclid(100);
-        let c2 = new_state.div_euclid(100);
-
-        let clicks = (c1 - c2).unsigned_abs();
-
-        (new_state, clicks)
+        (0..distance).fold((state, clicks), |(state, clicks), _| {
+            let state = state + direction;
+            (
+                state,
+                clicks + if state.rem_euclid(100) == 0 { 1 } else { 0 },
+            )
+        })
     }
 }
 
 fn parse_rotation(input: &str) -> ITResult<&str, Rotation> {
-    alt((
-        char('L').value(Direction::Left),
-        char('R').value(Direction::Right),
-    ))
-    .and(digit1.parse_from_str_cut())
-    .map(|(direction, distance)| Rotation {
-        direction,
-        distance,
-    })
-    .parse(input)
+    alt((char('L').value(Left), char('R').value(Right)))
+        .and(digit1.parse_from_str_cut())
+        .map(|(direction, distance)| Rotation {
+            direction,
+            distance,
+        })
+        .parse(input)
 }
 
 #[derive(Debug)]
@@ -93,7 +96,7 @@ pub fn part1(input: Input) -> Definitely<usize> {
         .count())
 }
 
-pub fn part2(input: Input) -> Definitely<u32> {
+pub fn part2(input: Input) -> Definitely<i32> {
     let mut state = 50;
 
     Ok(input
