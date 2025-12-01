@@ -68,13 +68,12 @@ impl<T: Hash + Eq> CounterStore for HashMap<T, usize> {
         T: 'a;
 
     #[inline]
-    #[must_use]
     fn new() -> Self {
         HashMap::new()
     }
 
     #[inline]
-    #[must_use]
+
     fn get(&self, key: &Self::Item) -> usize {
         self.get(key).copied().unwrap_or(0)
     }
@@ -85,13 +84,11 @@ impl<T: Hash + Eq> CounterStore for HashMap<T, usize> {
     }
 
     #[inline]
-    #[must_use]
     fn len(&self) -> usize {
         self.len()
     }
 
     #[inline]
-    #[must_use]
     fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
@@ -114,13 +111,11 @@ impl<T: Ord> CounterStore for BTreeMap<T, usize> {
         T: 'a;
 
     #[inline]
-    #[must_use]
     fn new() -> Self {
         BTreeMap::new()
     }
 
     #[inline]
-    #[must_use]
     fn get(&self, key: &Self::Item) -> usize {
         self.get(key).copied().unwrap_or(0)
     }
@@ -131,13 +126,11 @@ impl<T: Ord> CounterStore for BTreeMap<T, usize> {
     }
 
     #[inline]
-    #[must_use]
     fn len(&self) -> usize {
         self.len()
     }
 
     #[inline]
-    #[must_use]
     fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
@@ -160,13 +153,11 @@ impl<T: EnumArray<usize> + Copy> CounterStore for EnumMap<T, usize> {
         T: 'a;
 
     #[inline]
-    #[must_use]
     fn new() -> Self {
         Self::default()
     }
 
     #[inline]
-    #[must_use]
     fn get(&self, key: &Self::Item) -> usize {
         self[*key]
     }
@@ -177,13 +168,11 @@ impl<T: EnumArray<usize> + Copy> CounterStore for EnumMap<T, usize> {
     }
 
     #[inline]
-    #[must_use]
     fn len(&self) -> usize {
         self.iter().filter(|&(_, &count)| count > 0).count()
     }
 
     #[inline]
-    #[must_use]
     fn iter(&self) -> Self::Iter<'_> {
         self.iter()
     }
@@ -297,7 +286,6 @@ impl<T, Store: CounterStore<Item = T>> Counter<T, Store> {
 
 impl<T, Store: CounterStore<Item = T>> Default for Counter<T, Store> {
     #[inline]
-    #[must_use]
     fn default() -> Self {
         Self::new()
     }

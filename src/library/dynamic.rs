@@ -168,7 +168,7 @@ impl<K, V, S> Subtask<K, V> for Subtasker<S>
 where
     S: SubtaskStore<K, V>,
 {
-    fn precheck(&self, goals: impl IntoIterator<Item = K>) -> Result<(), Dependency<K>> {
+    fn precheck(&self, goals: impl IntoIterator<Item = K>) -> Result<(), Dependency<'_, K>> {
         goals
             .into_iter()
             .try_for_each(|goal| match self.store.contains(&goal) {
@@ -180,7 +180,7 @@ where
             })
     }
 
-    fn solve(&self, goal: K) -> Result<&V, Dependency<K>> {
+    fn solve(&self, goal: K) -> Result<&V, Dependency<'_, K>> {
         self.store.get(&goal).ok_or(Dependency {
             key: goal,
             lifetime: PhantomData,

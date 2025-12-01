@@ -1,5 +1,5 @@
 [package]
-name = "advent2024"
+name = "advent2025"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,7 +8,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.93"
 brownstone = "3.0.0"
-clap = { version = "4.5.21", features = ["derive"] }
+debate = "0.9.1"
 enum-map = "2.7.3"
 gcd = "2.3.0"
 gridly = "0.9.1"

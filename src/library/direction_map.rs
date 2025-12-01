@@ -32,7 +32,6 @@ impl<T> Index<Direction> for DirectionMap<T> {
     type Output = T;
 
     #[inline]
-    #[must_use]
     fn index(&self, index: Direction) -> &Self::Output {
         match index {
             Up => &self.values[0],
@@ -45,7 +44,6 @@ impl<T> Index<Direction> for DirectionMap<T> {
 
 impl<T> IndexMut<Direction> for DirectionMap<T> {
     #[inline]
-    #[must_use]
     fn index_mut(&mut self, index: Direction) -> &mut Self::Output {
         match index {
             Up => &mut self.values[0],

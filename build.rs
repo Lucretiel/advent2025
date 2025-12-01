@@ -1,12 +1,12 @@
 use std::{
     env,
-    fs::{read_dir, File},
+    fs::{File, read_dir},
     io::Write,
     path::PathBuf,
 };
 
 use lazy_format::lazy_format;
-use nom::{bytes::complete::tag, character::complete::digit1, IResult, Parser};
+use nom::{IResult, Parser, bytes::complete::tag, character::complete::digit1};
 use nom_supreme::ParserExt;
 
 fn parse_day_filename(input: &str) -> IResult<&str, i32, ()> {
@@ -52,6 +52,7 @@ fn main() {
 
     let enum_variants = lazy_format!("Day{day},\n" for day in days);
     let match_arms = lazy_format!("{day} => Ok(Day::Day{day}),\n" for day in days);
+    let usage_days = lazy_format!("\"{day}\"," for day in days);
     let solver_match_arms = lazy_format!(
         "#[allow(clippy::unnecessary_fallible_conversions)]
         #[allow(clippy::useless_conversion)]
@@ -91,6 +92,15 @@ fn main() {
             }}
         }}
 
+        impl ParsedValue for Day {{}}
+
+        impl ParameterUsage for Day {{
+            const VALUE: ParameterValueKind = ParameterValueKind::OneOf(&[
+                {usage_days}
+            ]);
+            const REQUIREMENT: Requirement = Requirement::Mandatory;
+            const REPETITION: Repetition = Repetition::Single;
+        }}
 
         fn run_solution(day: Day, part: Part, input: &str, show_input: bool) -> anyhow::Result<()> {{
             match (day, part) {{

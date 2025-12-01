@@ -1,5 +1,5 @@
 #![feature(array_windows)]
-#![feature(array_chunks)]
+#![feature(iter_array_chunks)]
 #![feature(try_trait_v2)]
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
@@ -15,7 +15,11 @@ use std::{
 };
 
 use anyhow::Context;
-use clap::Parser;
+use debate::{
+    FromArgs, Usage,
+    help::{ParameterUsage, ParameterValueKind, Repetition, Requirement},
+    parameter::ParsedValue,
+};
 use lazy_format::lazy_format;
 use thiserror::Error;
 
@@ -57,53 +61,77 @@ impl FromStr for Part {
     }
 }
 
+impl ParsedValue for Part {}
+
+impl ParameterUsage for Part {
+    const VALUE: ParameterValueKind = ParameterValueKind::OneOf(&["1", "2"]);
+    const REQUIREMENT: Requirement = Requirement::Mandatory;
+    const REPETITION: Repetition = Repetition::Single;
+}
+
 /// Solve an Advent of Code 2022 problem for the given day and part. Unless
 /// --string or --file are given, input is read from standard input. The
 /// solution is always written to standard output.
-#[derive(Parser)]
-#[command(group(clap::ArgGroup::new("input")))]
-struct Args {
+#[derive(FromArgs, Usage)]
+#[debate(help)]
+struct Advent2025<'a> {
     /// The advent of code day to solve
-    #[arg(short, long)]
+    #[debate(short, long)]
     day: Day,
 
     /// Which part of the day to solve
-    #[arg(short, long)]
+    #[debate(short, long)]
     part: Part,
 
     /// If given, before the solution is printed, the parsed input for the
     /// problem will be printed to stderr
-    #[arg(short = 'v', long)]
+    #[debate(short = 'v', long)]
     show_input: bool,
 
-    /// If given, read input from this file
-    #[arg(short, long, group = "input")]
-    file: Option<PathBuf>,
-
-    /// If given, use this as the puzzle input directly
-    #[arg(short, long, group = "input")]
-    string: Option<String>,
+    #[debate(flatten)]
+    input: Input<'a>,
 }
 
-fn main() -> anyhow::Result<()> {
-    let args: Args = Args::parse();
+#[derive(FromArgs, Usage)]
+#[debate(long)]
+enum Input<'a> {
+    /// If given, read input from stdin. This is the default.
+    Stdin,
 
-    let buf = match args.string {
-        Some(buf) => buf,
-        None => {
-            let mut buf = String::new();
-            match args.file {
-                Some(file) => File::open(&file)
-                    .context(lazy_format!("failed to open file: {:?}", file.display()))?
-                    .read_to_string(&mut buf)
-                    .context("failed to read puzzle input from file")?,
-                None => io::stdin()
-                    .read_to_string(&mut buf)
-                    .context("failed to read puzzle input from stdin")?,
-            };
-            buf
+    /// If given, read input from this file
+    #[debate(short)]
+    File(PathBuf),
+
+    /// If given, use this as the puzzle input directly
+    #[debate(short)]
+    String(&'a str),
+}
+
+#[debate::main]
+fn main(args: Advent2025<'_>) -> anyhow::Result<()> {
+    let mut buf: String = String::new();
+
+    let input = match args.input {
+        Input::String(s) => s,
+        Input::Stdin => {
+            io::stdin()
+                .read_to_string(&mut buf)
+                .context("failed to read puzzle input from stdin")?;
+
+            buf.as_str()
+        }
+        Input::File(filename) => {
+            File::open(&filename)
+                .context(lazy_format!(
+                    "failed to open file: {:?}",
+                    filename.display()
+                ))?
+                .read_to_string(&mut buf)
+                .context("failed to read puzzle input from file")?;
+
+            buf.as_str()
         }
     };
 
-    run_solution(args.day, args.part, &buf, args.show_input)
+    run_solution(args.day, args.part, &input, args.show_input)
 }
