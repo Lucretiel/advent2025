@@ -25,125 +25,13 @@ macro_rules! express {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct Chunks<I, const N: usize> {
-    iterator: I,
-}
-
-impl<I: Iterator, const N: usize> Iterator for Chunks<I, N> {
-    type Item = [I::Item; N];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(brownstone::build![self.iterator.next()?])
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (min, max) = self.iterator.size_hint();
-
-        (min / N, max.map(|max| max / N))
-    }
-
-    fn count(self) -> usize
-    where
-        Self: Sized,
-    {
-        self.iterator.count() / N
-    }
-
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let builder = match ArrayBuilder::start() {
-            PushResult::Full(array) => return Some(array),
-            PushResult::NotFull(builder) => builder,
-        };
-
-        let n = n.checked_mul(N).expect("usize overflow");
-
-        let mut builder = match builder.push(self.iterator.nth(n)?) {
-            PushResult::Full(array) => return Some(array),
-            PushResult::NotFull(builder) => builder,
-        };
-
-        loop {
-            builder = match builder.push(self.iterator.next()?) {
-                PushResult::Full(array) => return Some(array),
-                PushResult::NotFull(builder) => builder,
-            }
-        }
-    }
-
-    fn fold<B, F>(self, init: B, mut func: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        let builder = match ArrayBuilder::start() {
-            PushResult::Full(_array) => panic!("called Chunks::fold but N is 0"),
-            PushResult::NotFull(builder) => builder,
-        };
-
-        let (_, accum) =
-            self.iterator
-                .fold((builder, init), |(builder, accum), item| {
-                    match builder.push(item) {
-                        PushResult::NotFull(builder) => (builder, accum),
-                        PushResult::Full(array) => match ArrayBuilder::start() {
-                            PushResult::Full(_arr) => unreachable!(),
-                            PushResult::NotFull(builder) => (builder, func(accum, array)),
-                        },
-                    }
-                });
-
-        accum
-    }
-
-    fn try_fold<B, F, R>(&mut self, init: B, mut func: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: std::ops::Try<Output = B>,
-    {
-        let builder = match ArrayBuilder::start() {
-            PushResult::Full(_array) => panic!("called Chunks::try_fold but N is 0"),
-            PushResult::NotFull(builder) => builder,
-        };
-
-        let out = self
-            .iterator
-            .try_fold((builder, init), |(builder, accum), item| {
-                match builder.push(item) {
-                    PushResult::NotFull(builder) => ControlFlow::Continue((builder, accum)),
-                    PushResult::Full(array) => func(accum, array).branch().map_continue(|accum| {
-                        (
-                            match ArrayBuilder::start() {
-                                PushResult::Full(_arr) => unreachable!(),
-                                PushResult::NotFull(builder) => builder,
-                            },
-                            accum,
-                        )
-                    }),
-                }
-            });
-
-        match out {
-            ControlFlow::Continue((_, accum)) => R::from_output(accum),
-            ControlFlow::Break(residual) => R::from_residual(residual),
-        }
-    }
-}
-
-impl<T: FusedIterator, const N: usize> FusedIterator for Chunks<T, N> {}
-
-impl<T: ExactSizeIterator, const N: usize> ExactSizeIterator for Chunks<T, N> {
-    fn len(&self) -> usize {
-        self.iterator.len() / N
-    }
-}
-
 pub trait IterExt: Iterator + Sized {
-    fn streaming_chunks<const N: usize>(self) -> Chunks<Self, N> {
-        Chunks { iterator: self }
-    }
-
+    /**
+    Create an iterator that returns a sliding window of each item in the
+    iterator: `[0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5], ...`. Note that
+    the elements need to be cloned so they can reappear in each subsequent
+    window.
+     */
     fn streaming_windows<const N: usize>(mut self) -> Windows<Self, N> {
         Windows {
             state: match try_build_iter(&mut self) {
@@ -154,6 +42,12 @@ pub trait IterExt: Iterator + Sized {
         }
     }
 
+    /**
+    Create an iterator over the `Ok` items in this iterator. If an error occurs,
+    it is stored in the destination and the iterator will terminate. This
+    iterator is not fused; if you iterate it after it returns `None`, it will
+    continue emitting `Ok` items.
+    */
     fn disgorge_error<T, E>(self, destination: &mut Result<(), E>) -> DisgorgeError<'_, Self, E>
     where
         Self: Iterator<Item = Result<T, E>>,
@@ -164,6 +58,10 @@ pub trait IterExt: Iterator + Sized {
         }
     }
 
+    /**
+    Similar to enumerate: pair each item in the iterator with a row or column
+    index that increments once for each item in the iterator.
+    */
     fn with_coordinate<C: gridly::location::Component>(
         self,
         root: C,
@@ -174,10 +72,12 @@ pub trait IterExt: Iterator + Sized {
         }
     }
 
+    /// Enumerate an iterator using row indices
     fn with_rows(self, row: Row) -> EnumerateCoordinate<Self, Row> {
         self.with_coordinate(row)
     }
 
+    /// Enumerate an iterator using column indices
     fn with_columns(self, column: Column) -> EnumerateCoordinate<Self, Column> {
         self.with_coordinate(column)
     }
@@ -229,6 +129,8 @@ pub struct Windows<I: Iterator, const N: usize> {
     state: State<I::Item, N>,
 }
 
+/// Try to collect the first `N` items in `iter` into an array. Return `None`
+/// if there aren't enough.
 pub fn try_build_iter<I, const N: usize>(iter: I) -> Option<[I::Item; N]>
 where
     I: IntoIterator,
@@ -291,7 +193,10 @@ where
     where
         Self: Sized,
     {
-        self.iter.count() + 1
+        match self.state {
+            State::Buffered(_) => self.iter.count() + 1,
+            State::Done => 0,
+        }
     }
 
     fn fold<B, F>(self, init: B, mut func: F) -> B
@@ -369,8 +274,6 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.error.as_ref().ok()?;
-
         self.iterator
             .next()?
             .map_err(|err| {
@@ -380,12 +283,8 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.error.is_err() {
-            (0, Some(0))
-        } else {
-            let (_, max) = self.iterator.size_hint();
-            (0, max)
-        }
+        let (_, max) = self.iterator.size_hint();
+        (0, max)
     }
 
     fn count(self) -> usize {
@@ -589,11 +488,17 @@ where
     }
 }
 
+/// Compare a series of expression pairs, stopping at the first one that
+/// compares inequal. Returns equal if all the items are equal.
+///
+/// `cmp_all` is an expression; it doesn't use early returns.
 #[macro_export]
 macro_rules! cmp_all {
     (
         $($lhs:expr, $rhs:expr;)*
     ) => {{
+        // We could use a labeled break, but we'd rather trust the optimizer
+        // and permit weird control flow in `lhs` and `rhs`.
         let out = ::std::cmp::Ordering::Equal;
 
         $(
