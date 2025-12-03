@@ -89,7 +89,7 @@ struct Advent2025<'a> {
     show_input: bool,
 
     #[debate(flatten)]
-    input: Input<'a>,
+    input: Option<Input<'a>>,
 }
 
 #[derive(FromArgs, Usage)]
@@ -111,7 +111,7 @@ enum Input<'a> {
 fn main(args: Advent2025<'_>) -> anyhow::Result<()> {
     let mut buf: String = String::new();
 
-    let input = match args.input {
+    let input = match args.input.unwrap_or(Input::Stdin) {
         Input::String(s) => s,
         Input::Stdin => {
             io::stdin()
