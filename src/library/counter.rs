@@ -73,7 +73,6 @@ impl<T: Hash + Eq> CounterStore for HashMap<T, usize> {
     }
 
     #[inline]
-
     fn get(&self, key: &Self::Item) -> usize {
         self.get(key).copied().unwrap_or(0)
     }

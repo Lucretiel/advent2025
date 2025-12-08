@@ -7,7 +7,7 @@ pub mod dynamic;
 use std::{convert::Infallible, iter::FusedIterator, mem, ops::ControlFlow};
 
 use brownstone::move_builder::{ArrayBuilder, PushResult};
-use gridly::location::{Column, Row};
+use gridly::location::{Column, Component, Location, Row};
 use nom::{IResult, Parser, error::ParseError};
 use nom_supreme::{error::ErrorTree, tag::TagError};
 
@@ -572,4 +572,30 @@ macro_rules! cmp_all {
 
         out
     }}
+}
+
+pub fn nested_iter_with_locations<Iter, Row>(
+    root: Location,
+    iter: Iter,
+) -> impl Iterator<Item = (Location, Row::Item)>
+where
+    Iter: IntoIterator<Item = Row>,
+    Row: IntoIterator,
+{
+    let Location { row, column } = root;
+
+    iter.into_iter()
+        .with_rows(row)
+        .flat_map(move |(row, line)| {
+            line.into_iter()
+                .with_columns(column)
+                .map(move |(column, cell)| (row.combine(column), cell))
+        })
+}
+
+pub fn char_lines_with_locations<'a>(
+    root: Location,
+    content: &'a str,
+) -> impl Iterator<Item = (Location, char)> {
+    nested_iter_with_locations(root, content.trim().lines().map(|line| line.trim().chars()))
 }
