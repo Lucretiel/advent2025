@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(iter_array_chunks)]
 #![feature(try_trait_v2)]
+#![feature(control_flow_into_value)]
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 

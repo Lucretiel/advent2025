@@ -81,6 +81,16 @@ pub trait IterExt: Iterator + Sized {
     fn with_columns(self, column: Column) -> EnumerateCoordinate<Self, Column> {
         self.with_coordinate(column)
     }
+
+    fn take_while_some<T, F: FnMut(Self::Item) -> Option<T>>(
+        self,
+        func: F,
+    ) -> TakeWhileSome<Self, F> {
+        TakeWhileSome {
+            iterator: self,
+            filter: func,
+        }
+    }
 }
 
 impl<T: Iterator + Sized> IterExt for T {}
@@ -485,6 +495,58 @@ where
                 (func(accum, (coordinate, item)), coordinate.add_distance(1))
             })
             .0
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut func: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: std::ops::Try<Output = B>,
+    {
+        self.iter.try_fold(init, |accum, item| {
+            let coordinate = self.coordinate;
+            self.coordinate = coordinate.add_distance(1);
+
+            func(accum, (coordinate, item))
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TakeWhileSome<I, F> {
+    iterator: I,
+    filter: F,
+}
+
+impl<T, I, F> Iterator for TakeWhileSome<I, F>
+where
+    I: Iterator,
+    F: FnMut(I::Item) -> Option<T>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        (self.filter)(self.iterator.next()?)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, max) = self.iterator.size_hint();
+        (0, max)
+    }
+
+    fn fold<B, G>(mut self, init: B, mut func: G) -> B
+    where
+        Self: Sized,
+        G: FnMut(B, Self::Item) -> B,
+    {
+        let mut filter = self.filter;
+
+        self.iterator
+            .try_fold(init, |accum, item| match filter(item) {
+                None => ControlFlow::Break(accum),
+                Some(item) => ControlFlow::Continue(func(accum, item)),
+            })
+            .into_value()
     }
 }
 
