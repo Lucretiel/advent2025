@@ -3,7 +3,7 @@ use std::{collections::HashSet, convert::Infallible};
 use gridly::prelude::*;
 use itertools::Itertools;
 
-use crate::library::{Definitely, IterExt};
+use crate::library::{Definitely, char_lines_with_locations};
 
 #[derive(Debug)]
 pub struct Input {
@@ -15,14 +15,7 @@ impl TryFrom<&str> for Input {
 
     fn try_from(value: &str) -> Definitely<Self> {
         Ok(Input {
-            rolls: value
-                .trim()
-                .lines()
-                .map(|line| line.trim().chars().with_columns(Column(0)))
-                .with_rows(Row(0))
-                .flat_map(|(row, chars)| {
-                    chars.map(move |(column, cell)| (row.combine(column), cell))
-                })
+            rolls: char_lines_with_locations(Location::zero(), value)
                 .filter(|&(_, cell)| cell == '@')
                 .map(|(loc, _cell)| loc)
                 .collect(),
