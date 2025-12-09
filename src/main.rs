@@ -2,6 +2,7 @@
 #![feature(iter_array_chunks)]
 #![feature(try_trait_v2)]
 #![feature(control_flow_into_value)]
+#![feature(cmp_minmax)]
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
