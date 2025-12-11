@@ -1,4 +1,4 @@
-use std::{cmp, collections::HashSet, convert::Infallible};
+use std::{cmp, collections::HashSet};
 
 use gridly::prelude::*;
 
@@ -14,11 +14,9 @@ pub struct Input {
     boundary: Row,
 }
 
-impl TryFrom<&str> for Input {
-    type Error = Infallible;
-
-    fn try_from(value: &str) -> Definitely<Self> {
-        Ok(char_lines_with_locations(Location::zero(), value).fold(
+impl From<&str> for Input {
+    fn from(value: &str) -> Self {
+        char_lines_with_locations(Location::zero(), value).fold(
             Input::default(),
             |Input {
                  start,
@@ -46,7 +44,7 @@ impl TryFrom<&str> for Input {
                     },
                 }
             },
-        ))
+        )
     }
 }
 

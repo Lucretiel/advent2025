@@ -1,4 +1,4 @@
-use std::{collections::HashSet, convert::Infallible};
+use std::collections::HashSet;
 
 use gridly::prelude::*;
 use itertools::Itertools;
@@ -10,16 +10,14 @@ pub struct Input {
     rolls: HashSet<Location>,
 }
 
-impl TryFrom<&str> for Input {
-    type Error = Infallible;
-
-    fn try_from(value: &str) -> Definitely<Self> {
-        Ok(Input {
+impl From<&str> for Input {
+    fn from(value: &str) -> Self {
+        Input {
             rolls: char_lines_with_locations(Location::zero(), value)
                 .filter(|&(_, cell)| cell == '@')
                 .map(|(loc, _cell)| loc)
                 .collect(),
-        })
+        }
     }
 }
 

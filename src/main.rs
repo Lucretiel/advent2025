@@ -135,5 +135,5 @@ fn main(args: Advent2025<'_>) -> anyhow::Result<()> {
         }
     };
 
-    run_solution(args.day, args.part, &input, args.show_input)
+    run_solution(args.day, args.part, input, args.show_input)
 }

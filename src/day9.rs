@@ -121,68 +121,11 @@ fn find_best_rectangle<'a>(
                 )
             }
         }
-
-        if location.row > root.row
     }
 
     todo!()
 }
 
-pub fn part2(input: Input) -> anyhow::Result<isize> {
-    let mut tilesets = TileSets::default();
-
-    eprintln!("{double_dir:?}");
-
-    for [start, end] in input.tiles.array_windows() {
-        if start.row == end.row {
-            tilesets.add(start.row, start.column, end.column);
-        } else if start.column == end.column {
-            tilesets.add(start.column, start.row, end.row);
-        } else {
-            anyhow::bail!("a pair of tiles weren't in a line together")
-        }
-    }
-
-    // Close the loop
-    if let [Some(start), Some(end)] = [input.tiles.last(), input.tiles.first()] {
-        if start.row == end.row {
-            tilesets.add(start.row, start.column, end.column);
-        } else if start.column == end.column {
-            tilesets.add(start.column, start.row, end.row);
-        } else {
-            anyhow::bail!("a pair of tiles weren't in a line together")
-        }
-    }
-
-    eprintln!("done computing tilesets");
-
-    tilesets.normalize();
-
-    eprintln!("done normalizing tilesets");
-
-    // Just like part 1: brute force all rectangles, but also verify that the
-    // edges of the rectangle don't interset the polygon anywhere.
-    // Technically this is wrong, because if there's a corner that's directly
-    // adjacent to another corner, there's no bad tiles to intersect with.
-    // hopefully our input doesn't include this kind of shape.
-    all_possible_rectangles(&input.tiles)
-        .filter(|(corner1, corner2)| {
-            let [top, bottom] = cmp::minmax(corner1.row, corner2.row);
-            let [left, right] = cmp::minmax(corner1.column, corner2.column);
-
-            let segment1 = top.combine(left).range_to(right);
-            let segment2 = top.combine(left).range_to(bottom);
-            let segment3 = bottom.combine(left).range_to(right);
-            let segment4 = top.combine(right).range_to(bottom);
-
-            let mut perimeter = Iterator::chain(
-                [segment1, segment3].into_iter().flatten(),
-                [segment2, segment4].into_iter().flatten(),
-            );
-
-            perimeter.all(|permimeter| !tilesets.dead.contains(&permimeter))
-        })
-        .map(|(corner1, corner2)| area(corner1, corner2))
-        .max()
-        .context("no tiles in the input")
+pub fn part2(_input: Input) -> anyhow::Result<Infallible> {
+    anyhow::bail!("not implemented yet")
 }

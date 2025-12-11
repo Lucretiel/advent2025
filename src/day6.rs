@@ -27,7 +27,6 @@ impl TryFrom<&str> for Input {
         let ops = lines
             .next_back()
             .context("no set of operations")?
-            .trim()
             .split_whitespace()
             .map(|op| match op {
                 "+" => Ok(Op::Plus),
@@ -38,8 +37,7 @@ impl TryFrom<&str> for Input {
 
         let rows = lines
             .map(|line| {
-                line.trim()
-                    .split_whitespace()
+                line.split_whitespace()
                     .map(|value| value.parse::<i64>().context("non numeric value"))
                     .try_collect()
             })
